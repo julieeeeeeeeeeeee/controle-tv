@@ -1,0 +1,46 @@
+{
+  "expo": {
+    "name": "Controle TV",
+    "slug": "controle-tv",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#141311",
+    "ios": {
+      "supportsTablet": false
+    },
+    "android": {
+      "package": "br.julie.controletv",
+      "adaptiveIcon": {
+        "backgroundColor": "#141311",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "permissions": ["android.permission.ACCESS_NETWORK_STATE", "android.permission.ACCESS_LOCAL_NETWORK"]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-font",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "O app usa o microfone para você controlar a TV falando.",
+          "speechRecognitionPermission": "O app entende o que você fala para controlar a TV.",
+          "androidSpeechServicePackages": ["com.google.android.googlequicksearchbox"]
+        }
+      ]
+    ]
+  }
+}
