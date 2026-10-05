@@ -3,7 +3,7 @@ import { Pressable, ScrollView, Switch, Text, TextInput, View, useWindowDimensio
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import {
-  ArrowUUpLeft, GearSix, House, Keyboard, Microphone, Minus, Pencil, Plus, Power, SpeakerSlash, X,
+  ArrowUUpLeft, GearSix, House, Keyboard, MagnifyingGlass, Microphone, Minus, Pencil, Plus, Power, SpeakerSlash, X,
 } from 'phosphor-react-native';
 import { C, F } from './theme';
 import { Btn, Label, Sheet, Touchpad, buzz, setVibrate, useHold } from './ui';
@@ -11,6 +11,7 @@ import { CAT } from './apps';
 import { DEMO, KEY, tv } from './tv';
 import { interpret, Action } from './voice';
 import { Settings, SavedTv } from './store';
+import YtSheet from './YtSheet';
 import { checkUpdate, currentVersion, downloadAndInstall, Release } from './update';
 
 const useTv = () => useSyncExternalStore((cb) => tv.subscribe(cb), () => tv.status + '|' + tv.detail);
@@ -30,6 +31,7 @@ export default function Remote({ s, setS, onChangeTv }: { s: Settings; setS: (f:
   const [voice, setVoice] = useState(false);
   const [cfg, setCfg] = useState(false);
   const [pick, setPick] = useState(false);
+  const [ytOpen, setYtOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [upd, setUpd] = useState<Release | null>(null);
   const [updMsg, setUpdMsg] = useState('');
@@ -138,6 +140,12 @@ export default function Remote({ s, setS, onChangeTv }: { s: Settings; setS: (f:
         <View style={{ gap: 10 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <Label>Apps</Label>
+            {!editing && (
+              <Pressable onPress={() => setYtOpen(true)} hitSlop={10} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <MagnifyingGlass size={13} color={C.accent} weight="bold" />
+                <Label style={{ color: C.accent }}>Buscar no YouTube</Label>
+              </Pressable>
+            )}
             {editing && <Pressable onPress={() => setEditing(false)} hitSlop={10}><Label style={{ color: C.accent }}>Pronto ✓</Label></Pressable>}
           </View>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
@@ -177,6 +185,7 @@ export default function Remote({ s, setS, onChangeTv }: { s: Settings; setS: (f:
       )}
 
       <KeyboardSheet open={kb} onClose={() => setKb(false)} toast={toast} />
+      <YtSheet open={ytOpen} onClose={() => setYtOpen(false)} s={s} setS={setS} toast={toast} />
       <VoiceSheet open={voice} onClose={() => setVoice(false)} run={run} />
 
       <Sheet open={pick} onClose={() => setPick(false)} title="Adicionar app">

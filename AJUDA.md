@@ -20,10 +20,15 @@ O app fala com a TV pelo Wi-Fi de casa (celular e TV na **mesma rede**). Nada pa
 | Ligar não funciona com a TV desligada | A TV desliga o Wi-Fi quando apagada | Na TV: Configurações › Geral › Rede › Configurações avançadas › **Ligar com dispositivo móvel** (nome varia). Sem isso, só o controle original liga |
 | TV foi desligada com o app aberto | Normal | O app mostra "TV desligada ou fora do ar" e tenta reconectar sozinho a cada 5 segundos. Quando a TV ligar (pelo controle ou pelo botão do app), ele volta sozinho. Ao ir pro segundo plano ele para de tentar |
 | Conexão cai depois de um tempo parado | O Android suspende o Wi-Fi com a tela apagada | Ao abrir o app ele reconecta (aviso "Reconectando…") |
+| Comandos atrasam ao segurar volume | A TV ignora muitos comandos por segundo | O app já limita a ~6 por segundo |
+| "Código não aceito" ao vincular o YouTube | O código só vale enquanto a tela dele está aberta na TV | Na TV: YouTube › Configurações › Vincular com código de TV, e digite os números logo |
+| Vídeo não abre na TV | O YouTube da TV estava fechado, ou o vínculo foi desfeito | O app abre o YouTube e tenta de novo. Se continuar, toque em Desvincular e ligue de novo com um código novo |
 
 ## Atualizar o app
 Config › Versão › Verificar. Quando houver versão nova aparece uma faixa laranja no topo: toque em Atualizar, espere baixar e confirme a instalação do Android. Precisa que o repositório do GitHub seja público.
-| Comandos atrasam ao segurar volume | A TV ignora muitos comandos por segundo | O app já limita a ~6 por segundo |
+
+## Buscar no YouTube
+Toque em "Buscar no YouTube" (acima dos apps). Na primeira vez, ligue o app à TV com o código de TV do YouTube (uma vez só). Depois é buscar, tocar no vídeo e ele abre na TV. Digitar direto no teclado do YouTube da TV não é confiável nessa TV, por isso a busca é feita no celular.
 
 ## Voz
 Usa o reconhecimento de voz do Android (Google), em português. Precisa de internet no celular e da permissão de microfone.
