@@ -307,7 +307,9 @@ class Tv {
   // Ligar: com a TV acesa manda o botão de ligar (desliga). Apagada: Wake-on-LAN e espera ela voltar.
   async power(mac?: string): Promise<boolean> {
     if (this.status === 'on') return this.key(KEY.power);
-    this.pendingPower = mac ? 0 : Date.now(); // com Wake-on-LAN a TV acorda sozinha; sem, aperta ligar quando conectar
+    // Quando a conexão voltar, se a TV ainda estiver em standby aperta Ligar. (Na QN90A o Wake-on-LAN não acorda a TV, mas o
+    // botão Ligar pela conexão normal acorda: testado.) Se o Wake-on-LAN acordar, o PowerState já é "on" e nada é apertado.
+    this.pendingPower = Date.now();
     if (mac && TvLink) { try { await TvLink.wake(mac); } catch {} }
     this.reconnect();
     return true;
