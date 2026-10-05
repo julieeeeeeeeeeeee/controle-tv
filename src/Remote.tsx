@@ -12,7 +12,7 @@ import { DEMO, KEY, tv } from './tv';
 import { interpret, Action } from './voice';
 import { Settings, SavedTv } from './store';
 import YtSheet from './YtSheet';
-import { plan } from './ytkeys';
+import { LAYOUTS, plan } from './ytkeys';
 import { checkUpdate, currentVersion, downloadAndInstall, Release } from './update';
 
 const useTv = () => useSyncExternalStore((cb) => tv.subscribe(cb), () => tv.status + '|' + tv.detail);
@@ -238,6 +238,8 @@ function KeyboardSheet({ open, onClose, toast }: { open: boolean; onClose: () =>
   const [t, setT] = useState('');
   const [prog, setProg] = useState<[number, number] | null>(null);
   const [go, setGo] = useState(true);
+  const [layKey, setLayKey] = useState(LAYOUTS[0].key);
+  const lay = LAYOUTS.find((l) => l.key === layKey) ?? LAYOUTS[0];
   const stop = useRef(false);
   const send = () => {
     if (!t) return;
@@ -247,7 +249,7 @@ function KeyboardSheet({ open, onClose, toast }: { open: boolean; onClose: () =>
   // Teclado desenhado pelo app da TV (YouTube): navega com as setas, letra por letra.
   const typeApp = async () => {
     if (!t.trim() || prog) return;
-    const { keys, skipped } = plan(t, go);
+    const { keys, skipped } = plan(lay, t, go);
     if (!keys.length) { toast('Nada pra digitar'); return; }
     stop.current = false;
     setProg([0, keys.length]);
@@ -260,8 +262,15 @@ function KeyboardSheet({ open, onClose, toast }: { open: boolean; onClose: () =>
   return (
     <Sheet open={open} onClose={onClose} title="Teclado">
       <Text style={{ fontFamily: F.mono, fontSize: 11, color: C.mute, lineHeight: 17 }}>
-        Caixa de texto comum da TV: abra a busca, digite aqui e toque em Enviar. Teclado desenhado pelo app (YouTube): abra a busca com o destaque na letra A e use "Digitar no YouTube".
+        Caixa de texto comum da TV: abra a busca, digite aqui e toque em Enviar. Teclado desenhado pelo app: escolha o app abaixo. {lay.hint}
       </Text>
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        {LAYOUTS.map((l) => (
+          <Pressable key={l.key} onPress={() => setLayKey(l.key)} style={{ paddingHorizontal: 14, height: 34, borderRadius: 17, justifyContent: 'center', backgroundColor: l.key === layKey ? C.accent : C.key }}>
+            <Text style={{ fontFamily: F.mono, fontSize: 11, letterSpacing: 0.8, color: l.key === layKey ? '#fff' : C.mute, textTransform: 'uppercase' }}>{l.name}</Text>
+          </Pressable>
+        ))}
+      </View>
       <View style={{ flexDirection: 'row', gap: 10 }}>
         <TextInput
           value={t} onChangeText={setT} autoFocus={open} placeholder="Digite aqui…" placeholderTextColor={C.mute}
@@ -273,12 +282,14 @@ function KeyboardSheet({ open, onClose, toast }: { open: boolean; onClose: () =>
         </Btn>
       </View>
       <Btn onPress={prog ? () => { stop.current = true; } : typeApp} style={{ height: 48, borderRadius: 14 }}>
-        <Label style={{ color: C.ink }}>{prog ? `Digitando ${prog[0]}/${prog[1]} · toque pra parar` : 'Digitar no YouTube (setas)'}</Label>
+        <Label style={{ color: C.ink }}>{prog ? `Digitando ${prog[0]}/${prog[1]} · toque pra parar` : `Digitar no ${lay.name} (setas)`}</Label>
       </Btn>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Text style={{ fontFamily: F.mono, fontSize: 11, color: C.mute }}>Apertar Pesquisar no fim</Text>
-        <Switch value={go} onValueChange={setGo} trackColor={{ true: C.accent, false: C.keyHi }} thumbColor="#fff" />
-      </View>
+      {lay.search && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Text style={{ fontFamily: F.mono, fontSize: 11, color: C.mute }}>Apertar Pesquisar no fim</Text>
+          <Switch value={go} onValueChange={setGo} trackColor={{ true: C.accent, false: C.keyHi }} thumbColor="#fff" />
+        </View>
+      )}
       <View style={{ flexDirection: 'row', gap: 10 }}>
         <Btn onPress={() => tv.key(KEY.ok)} style={{ flex: 1, height: 44, borderRadius: 13 }}><Label style={{ color: C.ink }}>Enter na TV</Label></Btn>
         <Btn onPress={() => tv.key(KEY.back)} style={{ flex: 1, height: 44, borderRadius: 13 }}><Label style={{ color: C.ink }}>Voltar</Label></Btn>
