@@ -50,6 +50,7 @@ class Tv {
   }
 
   connect(cfg: Cfg) {
+    if (this.cfg?.ip !== cfg.ip) { this.resolved = {}; this.warmed = false; }
     this.cfg = cfg;
     this.wanted = true;
     this.paused = false;
@@ -141,6 +142,7 @@ class Tv {
       this.set('on');
       this.raw({ method: 'ms.channel.emit', params: { event: 'ed.installedApp.get', to: 'host' } });
       this.afterConnect();
+      this.warm().catch(() => {});
     } else if (m.event === 'ms.channel.unauthorized') {
       // token velho (a TV esqueceu este celular): apaga e pede o "Permitir" de novo, uma vez só
       if (this.cfg?.token) {
@@ -228,19 +230,40 @@ class Tv {
   }
 
   // Descobre o código do app NESTA TV: testa cada código conhecido no endereço REST da TV.
-  private async resolveApp(key: string): Promise<string | null> {
+  // Devolve o código, 'missing' (a TV respondeu "não existe" para todos) ou null (a TV não respondeu direito).
+  // Só vale "não instalado" quando TODAS as respostas foram 404; demora ou erro de rede nunca vira "não instalado".
+  private pending: Record<string, Promise<string | 'missing' | null>> = {};
+  private warmed = false;
+
+  private resolveApp(key: string): Promise<string | 'missing' | null> {
+    if (this.resolved[key]) return Promise.resolve(this.resolved[key]);
+    return (this.pending[key] ??= this.findApp(key).finally(() => { delete this.pending[key]; }));
+  }
+
+  private async findApp(key: string): Promise<string | 'missing' | null> {
     const def = CAT[key];
     if (!def || !this.cfg) return null;
-    if (this.resolved[key]) return this.resolved[key];
     const fromList = this.installed.find((a) => def.match.some((m) => a.name.toLowerCase().includes(m)));
     const cands = fromList ? [fromList.id, ...def.ids] : def.ids;
-    for (const id of cands) {
-      try {
-        const r = await this.http(`http://${this.cfg.ip}:8001/api/v2/applications/${id}`, {}, 2500);
-        if (r.ok) { this.resolved[key] = id; return id; }
-      } catch { return null; } // sem rede/TV apagada: não dá pra saber
+    for (let tries = 0; tries < 2; tries++) {
+      const rs = await Promise.all(cands.map(async (id) => {
+        try {
+          const r = await this.http(`http://${this.cfg!.ip}:8001/api/v2/applications/${id}`, {}, 4000);
+          return { id, st: r.ok ? 'ok' : r.status === 404 ? 'no' : 'err' };
+        } catch { return { id, st: 'err' }; }
+      }));
+      const hit = rs.find((r) => r.st === 'ok');
+      if (hit) { this.resolved[key] = hit.id; return hit.id; }
+      if (rs.every((r) => r.st === 'no')) return 'missing';
     }
     return null;
+  }
+
+  // Descobre o código de todos os apps logo que a TV conecta, pra o toque no atalho ser um único comando.
+  private async warm() {
+    if (this.warmed || DEMO) return;
+    this.warmed = true;
+    for (const k of Object.keys(CAT)) await this.resolveApp(k);
   }
 
   // 'ok' abriu · 'missing' o app não está instalado nesta TV · 'fail' a TV não respondeu
@@ -248,13 +271,15 @@ class Tv {
     if (DEMO) { this.sent?.('abrir ' + key); return 'ok'; }
     if (!this.cfg) return 'fail';
     const id = await this.resolveApp(key);
-    if (!id) {
-      try { await this.http(`http://${this.cfg.ip}:8001/api/v2/`, {}, 2000); return 'missing'; } catch { return 'fail'; }
+    if (id === 'missing') return 'missing';
+    if (!id) return 'fail';
+    for (let tries = 0; tries < 2; tries++) {
+      try {
+        const r = await this.http(`http://${this.cfg.ip}:8001/api/v2/applications/${id}`, { method: 'POST' }, 5000);
+        if (r.ok) return 'ok';
+        break;
+      } catch {}
     }
-    try {
-      const r = await this.http(`http://${this.cfg.ip}:8001/api/v2/applications/${id}`, { method: 'POST' }, 5000);
-      if (r.ok) return 'ok';
-    } catch {}
     // plano B: o canal antigo (funciona em TVs mais velhas)
     if (this.status === 'on' && this.raw({ method: 'ms.channel.emit', params: { event: 'ed.apps.launch', to: 'host', data: { appId: id, action_type: 'DEEP_LINK' } } })) return 'ok';
     return 'fail';

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { Pressable, ScrollView, Switch, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Switch, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import {
@@ -55,11 +55,16 @@ export default function Remote({ s, setS, onChangeTv }: { s: Settings; setS: (f:
   const key = (k: string) => { if (!tv.key(k)) toast(tv.status === 'on' ? 'Não enviou' : offMsg); };
 
 
+  const [launching, setLaunching] = useState('');
   const openApp = (k: string) => {
+    if (launching) return;
+    setLaunching(k);
+    toast('Abrindo ' + CAT[k].name + '…');
     tv.launch(k).then((r) => {
       if (r === 'missing') toast(CAT[k].name + ' não está instalado na TV');
-      else if (r === 'fail') toast(offMsg);
-    });
+      else if (r === 'fail') toast('A TV não respondeu. Está ligada?');
+      else toast(CAT[k].name + ' aberto');
+    }).finally(() => setLaunching(''));
   };
   const run = (a: Action) => {
     if (a.type === 'key') {
@@ -155,8 +160,8 @@ export default function Remote({ s, setS, onChangeTv }: { s: Settings; setS: (f:
               return (
                 <View key={k} style={{ width: tileW }}>
                   <Btn label={a.name} onPressIn={() => openApp(k)} style={{ height: 64, borderRadius: 15, gap: 5 }}>
-                    <a.Icon size={26} color={a.color} />
-                    <Text style={{ fontFamily: F.mono, fontSize: 9, letterSpacing: 0.8, color: C.mute, textTransform: 'uppercase' }} numberOfLines={1}>{a.name}</Text>
+                    {launching === k ? <ActivityIndicator size={26} color={a.color} /> : <a.Icon size={26} color={a.color} />}
+                    <Text style={{ fontFamily: F.mono, fontSize: 9, letterSpacing: 0.8, color: launching === k ? C.ink : C.mute, textTransform: 'uppercase' }} numberOfLines={1}>{launching === k ? 'Abrindo…' : a.name}</Text>
                   </Btn>
                   {editing && (
                     <Pressable onPress={() => setS((p) => ({ ...p, apps: p.apps.filter((x) => x !== k) }))} hitSlop={8}
