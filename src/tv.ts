@@ -212,6 +212,16 @@ class Tv {
     return this.raw({ method: 'ms.remote.control', params: { Cmd: 'Click', DataOfCmd: k, Option: 'false', TypeOfRemote: 'SendRemoteKey' } });
   }
 
+  // Manda uma lista de teclas devagar (130 ms entre elas: testado na QN90A, que não perdeu tecla com 70 ms).
+  async typeKeys(keys: string[], onStep: (done: number) => void, stopped: () => boolean): Promise<boolean> {
+    for (let i = 0; i < keys.length; i++) {
+      if (stopped() || !this.key(keys[i])) return false;
+      onStep(i + 1);
+      await new Promise((r) => setTimeout(r, 130));
+    }
+    return true;
+  }
+
   text(t: string): boolean {
     if (DEMO) { this.sent?.('texto: ' + t); return true; }
     if (this.status !== 'on') { this.reconnect(); return false; }

@@ -14,7 +14,8 @@ O app fala com a TV pelo Wi-Fi de casa (celular e TV na **mesma rede**). Nada pa
 | Nenhuma TV encontrada | Celular em outra rede (ex.: Wi-Fi de visitantes, 5G) ou TV desligada | Mesma rede nos dois. Ou digite o IP da TV (Configurações › Geral › Rede › Status da rede) |
 | "A TV recusou a conexão" ou o aviso nunca aparece | A TV bloqueia aparelhos novos | Na TV: Configurações › Geral › Gerenciador de dispositivos externos › Gerenciador de conexão de dispositivo › **Notificação de acesso** ligada. Apague o "Controle TV" da lista de aparelhos e tente de novo |
 | Funcionava e parou de pedir/aceitar | A TV esqueceu a permissão (atualização, reinício de fábrica) | O app apaga a permissão velha sozinho e pede de novo |
-| Teclado não digita nada | A TV só aceita texto quando há um campo de texto aberto | Abra a busca na TV primeiro, depois digite no app |
+| Teclado não digita nada | A TV só aceita texto em caixas de texto comuns; YouTube, Netflix etc. desenham o próprio teclado | Caixa comum: abra a busca na TV e use Enviar. YouTube: deixe o destaque na letra A e use "Digitar no YouTube (setas)" |
+| "Digitar no YouTube" saiu errado | O destaque não estava na letra A quando começou, ou você mexeu na TV durante | Apague a caixa, volte o destaque ao A e tente de novo. Não toque no controle da TV enquanto digita |
 | Um app não abre | O app não está instalado na TV, ou o código dele é diferente na sua região | O app avisa "não está instalado na TV". Os apps abrem pelo endereço REST da TV (testado na QN90A, onde o canal antigo não funciona) |
 | Cursor (ponteiro) na tela da TV | Testado na QN90A: a TV não mostra o ponteiro de forma confiável por esse canal | Recurso removido. Use o touchpad de setas |
 | Ligar não funciona com a TV desligada | A TV desliga o Wi-Fi quando apagada | Na TV: Configurações › Geral › Rede › Configurações avançadas › **Ligar com dispositivo móvel** (nome varia). Sem isso, só o controle original liga |
@@ -28,8 +29,11 @@ O app fala com a TV pelo Wi-Fi de casa (celular e TV na **mesma rede**). Nada pa
 Config › Versão › Verificar. Quando houver versão nova aparece uma faixa laranja no topo: toque em Atualizar, espere baixar e confirme a instalação do Android. Precisa que o repositório do GitHub seja público.
 
 ## Buscar no YouTube
-Toque em "Buscar no YouTube" (acima dos apps). Na primeira vez, ligue o app à TV com o código de TV do YouTube (uma vez só). Depois é buscar, tocar no vídeo e ele abre na TV. Digitar direto no teclado do YouTube da TV não é confiável nessa TV, por isso a busca é feita no celular.
+Toque em "Buscar no YouTube" (acima dos apps). Na primeira vez, ligue o app à TV com o código de TV do YouTube (uma vez só). Depois é buscar, tocar no vídeo e ele abre na TV. Essa busca é mais rápida que digitar na TV. Para digitar na própria TV, veja "Teclado do YouTube" abaixo.
 
 ## Voz
 Usa o reconhecimento de voz do Android (Google), em português. Precisa de internet no celular e da permissão de microfone.
 Comandos que entende: "aumenta/diminui o volume", "silencia", "muda o canal", "volta", "início", "desliga a TV", "abre a Netflix" (e os outros apps), "procura por ___" (digita na TV).
+
+## Teclado do YouTube (como funciona)
+O app aperta as setas e o OK da TV, letra por letra, seguindo o desenho do teclado do YouTube. Regras descobertas na QN90A: o destaque começa no A; vogais e C abrem um menu de acentos em que "cima" escolhe o acento (por isso o app nunca sobe a partir delas); de qualquer letra da última linha "baixo" cai no ESPAÇO. O simulador está em `sim/` (`node sim/test.js`).

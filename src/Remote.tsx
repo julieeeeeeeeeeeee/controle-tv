@@ -12,6 +12,7 @@ import { DEMO, KEY, tv } from './tv';
 import { interpret, Action } from './voice';
 import { Settings, SavedTv } from './store';
 import YtSheet from './YtSheet';
+import { plan } from './ytkeys';
 import { checkUpdate, currentVersion, downloadAndInstall, Release } from './update';
 
 const useTv = () => useSyncExternalStore((cb) => tv.subscribe(cb), () => tv.status + '|' + tv.detail);
@@ -235,15 +236,31 @@ function Row({ label, sub, right, onPress }: { label: string; sub?: string; righ
 
 function KeyboardSheet({ open, onClose, toast }: { open: boolean; onClose: () => void; toast: (m: string) => void }) {
   const [t, setT] = useState('');
+  const [prog, setProg] = useState<[number, number] | null>(null);
+  const [go, setGo] = useState(true);
+  const stop = useRef(false);
   const send = () => {
     if (!t) return;
     toast(tv.text(t) ? 'Enviado à TV: ' + t : 'TV desconectada');
     setT('');
   };
+  // Teclado desenhado pelo app da TV (YouTube): navega com as setas, letra por letra.
+  const typeApp = async () => {
+    if (!t.trim() || prog) return;
+    const { keys, skipped } = plan(t, go);
+    if (!keys.length) { toast('Nada pra digitar'); return; }
+    stop.current = false;
+    setProg([0, keys.length]);
+    const done = await tv.typeKeys(keys, (n) => setProg([n, keys.length]), () => stop.current);
+    setProg(null);
+    if (done) { toast(skipped.length ? 'Pronto. Ignorei: ' + skipped.join(' ') : 'Pronto'); setT(''); }
+    else toast(stop.current ? 'Parei. O foco na TV ficou onde estava' : 'A TV não respondeu');
+  };
+  useEffect(() => { if (!open) stop.current = true; }, [open]);
   return (
     <Sheet open={open} onClose={onClose} title="Teclado">
       <Text style={{ fontFamily: F.mono, fontSize: 11, color: C.mute, lineHeight: 17 }}>
-        Abra a busca na TV, digite aqui e toque em Enviar.
+        Caixa de texto comum da TV: abra a busca, digite aqui e toque em Enviar. Teclado desenhado pelo app (YouTube): abra a busca com o destaque na letra A e use "Digitar no YouTube".
       </Text>
       <View style={{ flexDirection: 'row', gap: 10 }}>
         <TextInput
@@ -254,6 +271,13 @@ function KeyboardSheet({ open, onClose, toast }: { open: boolean; onClose: () =>
         <Btn onPress={send} bg={C.accent} edge={C.accentEdge} style={{ height: 52, paddingHorizontal: 20, borderRadius: 14 }}>
           <Text style={{ fontFamily: F.mono, fontSize: 11, letterSpacing: 1.2, color: '#fff', textTransform: 'uppercase' }}>Enviar</Text>
         </Btn>
+      </View>
+      <Btn onPress={prog ? () => { stop.current = true; } : typeApp} style={{ height: 48, borderRadius: 14 }}>
+        <Label style={{ color: C.ink }}>{prog ? `Digitando ${prog[0]}/${prog[1]} · toque pra parar` : 'Digitar no YouTube (setas)'}</Label>
+      </Btn>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Text style={{ fontFamily: F.mono, fontSize: 11, color: C.mute }}>Apertar Pesquisar no fim</Text>
+        <Switch value={go} onValueChange={setGo} trackColor={{ true: C.accent, false: C.keyHi }} thumbColor="#fff" />
       </View>
       <View style={{ flexDirection: 'row', gap: 10 }}>
         <Btn onPress={() => tv.key(KEY.ok)} style={{ flex: 1, height: 44, borderRadius: 13 }}><Label style={{ color: C.ink }}>Enter na TV</Label></Btn>
