@@ -210,19 +210,6 @@ class Tv {
     return this.raw({ method: 'ms.remote.control', params: { Cmd: 'Click', DataOfCmd: k, Option: 'false', TypeOfRemote: 'SendRemoteKey' } });
   }
 
-  // cursor na tela da TV (modo ponteiro): posição absoluta em pixels da tela
-  mouseMove(x: number, y: number): boolean {
-    if (DEMO) return true;
-    if (this.status !== 'on') return false;
-    return this.raw({ method: 'ms.remote.control', params: { Cmd: 'Move', Position: { x: Math.round(x), y: Math.round(y), Time: '0' }, TypeOfRemote: 'ProcessMouseDevice' } });
-  }
-
-  mouseClick(): boolean {
-    if (DEMO) { this.sent?.('clique'); return true; }
-    if (this.status !== 'on') { this.reconnect(); return false; }
-    return this.raw({ method: 'ms.remote.control', params: { Cmd: 'LeftClick', TypeOfRemote: 'ProcessMouseDevice' } });
-  }
-
   text(t: string): boolean {
     if (DEMO) { this.sent?.('texto: ' + t); return true; }
     if (this.status !== 'on') { this.reconnect(); return false; }
@@ -232,19 +219,45 @@ class Tv {
     return ok;
   }
 
-  appId(key: string): string | undefined {
-    const def = CAT[key];
-    if (!def) return undefined;
-    const hit = this.installed.find((a) => def.match.some((m) => a.name.toLowerCase().includes(m)));
-    return hit?.id ?? def.fallbackId;
+  private resolved: Record<string, string> = {};
+
+  private async http(url: string, init: RequestInit = {}, ms = 3000): Promise<Response> {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), ms);
+    try { return await fetch(url, { ...init, signal: ctl.signal }); } finally { clearTimeout(t); }
   }
 
-  launch(key: string): boolean {
-    if (DEMO) { this.sent?.('abrir ' + key); return true; }
-    if (this.status !== 'on') { this.reconnect(); return false; }
-    const id = this.appId(key);
-    if (!id) return false;
-    return this.raw({ method: 'ms.channel.emit', params: { event: 'ed.apps.launch', to: 'host', data: { appId: id, action_type: 'DEEP_LINK' } } });
+  // Descobre o código do app NESTA TV: testa cada código conhecido no endereço REST da TV.
+  private async resolveApp(key: string): Promise<string | null> {
+    const def = CAT[key];
+    if (!def || !this.cfg) return null;
+    if (this.resolved[key]) return this.resolved[key];
+    const fromList = this.installed.find((a) => def.match.some((m) => a.name.toLowerCase().includes(m)));
+    const cands = fromList ? [fromList.id, ...def.ids] : def.ids;
+    for (const id of cands) {
+      try {
+        const r = await this.http(`http://${this.cfg.ip}:8001/api/v2/applications/${id}`, {}, 2500);
+        if (r.ok) { this.resolved[key] = id; return id; }
+      } catch { return null; } // sem rede/TV apagada: não dá pra saber
+    }
+    return null;
+  }
+
+  // 'ok' abriu · 'missing' o app não está instalado nesta TV · 'fail' a TV não respondeu
+  async launch(key: string): Promise<'ok' | 'missing' | 'fail'> {
+    if (DEMO) { this.sent?.('abrir ' + key); return 'ok'; }
+    if (!this.cfg) return 'fail';
+    const id = await this.resolveApp(key);
+    if (!id) {
+      try { await this.http(`http://${this.cfg.ip}:8001/api/v2/`, {}, 2000); return 'missing'; } catch { return 'fail'; }
+    }
+    try {
+      const r = await this.http(`http://${this.cfg.ip}:8001/api/v2/applications/${id}`, { method: 'POST' }, 5000);
+      if (r.ok) return 'ok';
+    } catch {}
+    // plano B: o canal antigo (funciona em TVs mais velhas)
+    if (this.status === 'on' && this.raw({ method: 'ms.channel.emit', params: { event: 'ed.apps.launch', to: 'host', data: { appId: id, action_type: 'DEEP_LINK' } } })) return 'ok';
+    return 'fail';
   }
 
   // Ligar: com a TV acesa manda o botão de ligar (desliga). Apagada: Wake-on-LAN e espera ela voltar.

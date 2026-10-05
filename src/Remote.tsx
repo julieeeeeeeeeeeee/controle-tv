@@ -52,22 +52,19 @@ export default function Remote({ s, setS, onChangeTv }: { s: Settings; setS: (f:
   const offMsg = 'TV desligada ou fora do ar. Estou tentando reconectar…';
   const key = (k: string) => { if (!tv.key(k)) toast(tv.status === 'on' ? 'Não enviou' : offMsg); };
 
-  // cursor na TV: o dedo move um ponto na tela de 1920x1080
-  const pos = useRef<{ x: number; y: number; last: number; timer?: ReturnType<typeof setTimeout> }>({ x: 960, y: 540, last: 0 });
-  const moveCursor = (dx: number, dy: number) => {
-    const p = pos.current;
-    p.x = Math.max(0, Math.min(1919, p.x + dx * 5.5));
-    p.y = Math.max(0, Math.min(1079, p.y + dy * 5.5));
-    const send = () => { p.last = Date.now(); p.timer = undefined; tv.mouseMove(p.x, p.y); };
-    const wait = 35 - (Date.now() - p.last);
-    if (wait <= 0) send(); else if (!p.timer) p.timer = setTimeout(send, wait);
+
+  const openApp = (k: string) => {
+    tv.launch(k).then((r) => {
+      if (r === 'missing') toast(CAT[k].name + ' não está instalado na TV');
+      else if (r === 'fail') toast(offMsg);
+    });
   };
   const run = (a: Action) => {
     if (a.type === 'key') {
       const n = a.repeat ?? 1;
       for (let i = 0; i < n; i++) setTimeout(() => tv.key(a.key), i * 110);
     } else if (a.type === 'app') {
-      if (!tv.launch(a.app)) toast('Não achei esse app na TV');
+      openApp(a.app);
     } else if (!tv.text(a.text)) toast('TV desconectada');
     toast('Enviado: ' + a.label);
   };
@@ -118,13 +115,13 @@ export default function Remote({ s, setS, onChangeTv }: { s: Settings; setS: (f:
           </Btn>
         </View>
 
-        <View style={{ alignItems: 'center' }}><Touchpad size={stage} mode={s.cursor ? 'cursor' : 'keys'} onKey={key} onMove={moveCursor} onClick={() => { if (!tv.mouseClick()) toast(offMsg); }} onToggle={() => setS((p) => ({ ...p, cursor: !p.cursor }))} /></View>
+        <View style={{ alignItems: 'center' }}><Touchpad size={stage} onKey={key} /></View>
 
         {/* navegação | entrada */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <View style={pill}>
-            <Btn label="Voltar" onPress={() => key(KEY.back)} style={round}><ArrowUUpLeft size={26} color={C.ink} /></Btn>
-            <Btn label="Início" onPress={() => key(KEY.home)} style={round}><House size={26} color={C.ink} /></Btn>
+            <Btn label="Voltar" onPressIn={() => key(KEY.back)} style={round}><ArrowUUpLeft size={26} color={C.ink} /></Btn>
+            <Btn label="Início" onPressIn={() => key(KEY.home)} style={round}><House size={26} color={C.ink} /></Btn>
           </View>
           <View style={pill}>
             <Btn label="Teclado" onPress={() => setKb(true)} style={round}><Keyboard size={26} color={C.ink} /></Btn>
@@ -149,7 +146,7 @@ export default function Remote({ s, setS, onChangeTv }: { s: Settings; setS: (f:
               if (!a) return null;
               return (
                 <View key={k} style={{ width: tileW }}>
-                  <Btn label={a.name} onPress={() => { if (!tv.launch(k)) toast(tv.status === 'on' ? 'Não achei o ' + a.name + ' na TV' : 'Reconectando à TV…'); }} style={{ height: 64, borderRadius: 15, gap: 5 }}>
+                  <Btn label={a.name} onPressIn={() => openApp(k)} style={{ height: 64, borderRadius: 15, gap: 5 }}>
                     <a.Icon size={26} color={a.color} />
                     <Text style={{ fontFamily: F.mono, fontSize: 9, letterSpacing: 0.8, color: C.mute, textTransform: 'uppercase' }} numberOfLines={1}>{a.name}</Text>
                   </Btn>
@@ -199,7 +196,6 @@ export default function Remote({ s, setS, onChangeTv }: { s: Settings; setS: (f:
         <Row label="Editar apps" onPress={() => { setEditing(true); setCfg(false); }} right={<Pencil size={18} color={C.mute} />} />
         <Row label="Vibrar ao tocar" right={<Switch value={s.vib} onValueChange={(v) => setS((p) => ({ ...p, vib: v }))} trackColor={{ true: C.accent, false: C.keyHi }} thumbColor="#fff" />} />
         <Row label="Trocar lado de volume e canal" right={<Switch value={s.flip} onValueChange={(v) => setS((p) => ({ ...p, flip: v }))} trackColor={{ true: C.accent, false: C.keyHi }} thumbColor="#fff" />} />
-        <Row label="Cursor na TV em vez de setas" right={<Switch value={s.cursor} onValueChange={(v) => setS((p) => ({ ...p, cursor: v }))} trackColor={{ true: C.accent, false: C.keyHi }} thumbColor="#fff" />} />
         <Row label={`Versão ${currentVersion()}`} sub={prog >= 0 ? `Baixando ${Math.round(prog * 100)}%` : updMsg || (upd ? 'Nova versão ' + upd.version : '')} onPress={upd ? doInstall : doCheck}
           right={<Label style={{ color: C.accent }}>{upd ? 'Atualizar' : 'Verificar'}</Label>} />
         <Row label={`TV · ${tvSaved?.name ?? ''}`} sub={`${tvSaved?.ip ?? ''}${tvSaved?.model ? ' · ' + tvSaved.model : ''}`} onPress={() => { setCfg(false); onChangeTv(); }} right={<Label style={{ color: C.accent }}>Trocar</Label>} />

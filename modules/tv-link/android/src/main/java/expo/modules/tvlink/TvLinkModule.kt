@@ -13,6 +13,8 @@ import java.net.DatagramSocket
 import java.net.HttpURLConnection
 import java.net.InetAddress
 import java.net.NetworkInterface
+import java.net.Socket
+import javax.net.SocketFactory
 import java.net.URL
 import java.security.SecureRandom
 import java.security.cert.X509Certificate
@@ -22,6 +24,17 @@ import java.util.concurrent.TimeUnit
 import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
+
+// Conexões sem espera: manda cada tecla na hora, sem juntar pacotes pequenos (Nagle).
+private class NoDelayFactory : SocketFactory() {
+  private val base: SocketFactory = SocketFactory.getDefault()
+  private fun <T : Socket> T.fast(): T { tcpNoDelay = true; keepAlive = true; return this }
+  override fun createSocket(): Socket = base.createSocket().fast()
+  override fun createSocket(host: String, port: Int): Socket = base.createSocket(host, port).fast()
+  override fun createSocket(host: String, port: Int, localHost: InetAddress, localPort: Int): Socket = base.createSocket(host, port, localHost, localPort).fast()
+  override fun createSocket(host: InetAddress, port: Int): Socket = base.createSocket(host, port).fast()
+  override fun createSocket(address: InetAddress, port: Int, localAddress: InetAddress, localPort: Int): Socket = base.createSocket(address, port, localAddress, localPort).fast()
+}
 
 // Fala com a TV Samsung. A TV usa um certificado próprio (autoassinado), que o
 // Android recusa por padrão. Aqui ele só é aceito para endereços da rede de casa.
@@ -40,6 +53,7 @@ class TvLinkModule : Module() {
     val ctx = SSLContext.getInstance("TLS")
     ctx.init(null, arrayOf<TrustManager>(tm), SecureRandom())
     return OkHttpClient.Builder()
+      .socketFactory(NoDelayFactory())
       .sslSocketFactory(ctx.socketFactory, tm)
       .hostnameVerifier { _, _ -> true }
       .connectTimeout(6, TimeUnit.SECONDS)
