@@ -212,9 +212,18 @@ class Tv {
     return this.raw({ method: 'ms.remote.control', params: { Cmd: 'Click', DataOfCmd: k, Option: 'false', TypeOfRemote: 'SendRemoteKey' } });
   }
 
+  // Trocar a saída de som (caixas da TV → fone → óptico). Cada OK em "Saída de Som" passa pra próxima saída.
+  // Caminho: Início, esquerda até a engrenagem (a borda para), cima até as Configurações Rápidas, esquerda até o 1º item, direita 5x.
+  async nextSound(): Promise<boolean> {
+    const rep = (k: string, n: number) => Array(n).fill(k);
+    const keys = ['KEY_HOME', 'WAIT:1500', ...rep('KEY_LEFT', 9), 'WAIT:300', 'KEY_UP', 'WAIT:400', ...rep('KEY_LEFT', 8), ...rep('KEY_RIGHT', 5), 'KEY_ENTER'];
+    return this.typeKeys(keys, () => {}, () => false);
+  }
+
   // Manda uma lista de teclas devagar (130 ms entre elas: testado na QN90A, que não perdeu tecla com 70 ms).
   async typeKeys(keys: string[], onStep: (done: number) => void, stopped: () => boolean): Promise<boolean> {
     for (let i = 0; i < keys.length; i++) {
+      if (keys[i].startsWith('WAIT:')) { await new Promise((r) => setTimeout(r, parseInt(keys[i].slice(5), 10))); continue; }
       if (stopped() || !this.key(keys[i])) return false;
       onStep(i + 1);
       await new Promise((r) => setTimeout(r, 130));

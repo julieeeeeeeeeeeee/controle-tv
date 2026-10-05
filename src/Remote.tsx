@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, ScrollView, Switch, Text, TextInput, View
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import {
-  ArrowUUpLeft, GearSix, House, Keyboard, MagnifyingGlass, Microphone, Minus, Pencil, Plus, Power, SpeakerSlash, X,
+  ArrowUUpLeft, GearSix, Headphones, House, Keyboard, MagnifyingGlass, Microphone, Minus, Pencil, Plus, Power, SpeakerSlash, X,
 } from 'phosphor-react-native';
 import { C, F } from './theme';
 import { Btn, Label, Sheet, Touchpad, buzz, setVibrate, useHold } from './ui';
@@ -209,6 +209,8 @@ export default function Remote({ s, setS, onChangeTv }: { s: Settings; setS: (f:
 
       <Sheet open={cfg} onClose={() => setCfg(false)} title="Configurações">
         <Row label="Editar apps" onPress={() => { setEditing(true); setCfg(false); }} right={<Pencil size={18} color={C.mute} />} />
+        <Row label="Saída de som (fone / caixas)" sub="Toque pra passar pra próxima saída; veja o nome na TV"
+          onPress={() => { setCfg(false); toast('Trocando a saída de som…'); tv.nextSound().then((ok) => { if (!ok) toast(offMsg); }); }} right={<Headphones size={18} color={C.mute} />} />
         <Row label="Vibrar ao tocar" right={<Switch value={s.vib} onValueChange={(v) => setS((p) => ({ ...p, vib: v }))} trackColor={{ true: C.accent, false: C.keyHi }} thumbColor="#fff" />} />
         <Row label="Trocar lado de volume e canal" right={<Switch value={s.flip} onValueChange={(v) => setS((p) => ({ ...p, flip: v }))} trackColor={{ true: C.accent, false: C.keyHi }} thumbColor="#fff" />} />
         <Row label={`Versão ${currentVersion()}`} sub={prog >= 0 ? `Baixando ${Math.round(prog * 100)}%` : updMsg || (upd ? 'Nova versão ' + upd.version : '')} onPress={upd ? doInstall : doCheck}

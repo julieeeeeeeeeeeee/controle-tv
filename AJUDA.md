@@ -37,3 +37,6 @@ Comandos que entende: "aumenta/diminui o volume", "silencia", "muda o canal", "v
 
 ## Teclados dos apps: YouTube e Netflix (como funciona)
 No Teclado do app, escolha YouTube ou Netflix e toque em "Digitar". **YouTube:** abra a busca com o destaque na letra A. **Netflix:** abra a busca recém-aberta, com o destaque na lupa (pra digitar de novo, saia da busca e entre outra vez, porque a TV lembra o último botão). O app aperta as setas e o OK da TV, letra por letra, seguindo o desenho do teclado do YouTube. Regras descobertas na QN90A: o destaque começa no A; vogais e C abrem um menu de acentos em que "cima" escolhe o acento (por isso o app nunca sobe a partir delas); de qualquer letra da última linha "baixo" cai no ESPAÇO. Na Netflix o teclado tem 6 colunas (a-f, g-l, m-r, s-x, y z 1-4, 5-0) com ESPAÇO acima de A B C e APAGAR acima de D E F. O simulador do YouTube está em `sim/` (`node sim/test.js`).
+
+## Saída de som (fone Bluetooth)
+Config › Saída de som. O app faz o caminho pelo painel Configurações Rápidas da TV (Início, esquerda até a engrenagem, cima, direita até "Saída de Som") e aperta OK uma vez. Cada toque passa pra próxima saída (caixas da TV → fone → óptico); o nome aparece na TV. O fone precisa estar pareado e ligado à TV, e não preso ao celular.
