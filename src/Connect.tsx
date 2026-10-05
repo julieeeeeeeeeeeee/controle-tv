@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowClockwise, Television } from 'phosphor-react-native';
 import { C, F } from './theme';
 import { Btn, Label } from './ui';
-import { discover, tv } from './tv';
+import { discover, tv, tvInfo } from './tv';
 import { SavedTv } from './store';
 
 type Found = { ip: string; name: string; model: string; mac: string };
@@ -29,7 +29,11 @@ export default function Connect({ onDone, current }: { onDone: (t: SavedTv) => v
   }, []);
   useEffect(() => { scan(); }, [scan]);
 
-  const go = (f: Found) => {
+  const go = async (f: Found) => {
+    if (!f.mac) {
+      const i = await tvInfo(f.ip);
+      if (i) f = { ...f, name: i.name || f.name, model: i.model || f.model, mac: i.mac };
+    }
     setTarget(f);
     tv.disconnect();
     tv.connect({ ip: f.ip, token: current?.ip === f.ip ? current.token : undefined });

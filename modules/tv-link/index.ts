@@ -9,6 +9,7 @@ type Native = {
   close(): void;
   discover(): Promise<Found[]>;
   wake(mac: string): Promise<boolean>;
+  info(ip: string): Promise<Found | null>;
   addListener(event: 'onOpen' | 'onMessage' | 'onClose' | 'onError', cb: (e: any) => void): Sub;
 };
 

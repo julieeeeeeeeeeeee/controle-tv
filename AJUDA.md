@@ -17,7 +17,12 @@ O app fala com a TV pelo Wi-Fi de casa (celular e TV na **mesma rede**). Nada pa
 | Teclado não digita nada | A TV só aceita texto quando há um campo de texto aberto | Abra a busca na TV primeiro, depois digite no app |
 | Um app (ex.: Globoplay) não abre | A TV não devolveu a lista de apps ou o nome é diferente | Veja se o app está instalado na TV. Netflix, YouTube, Prime, Disney+, Spotify e Apple TV têm código reserva; os demais dependem da lista da TV |
 | Ligar não funciona com a TV desligada | A TV desliga o Wi-Fi quando apagada | Na TV: Configurações › Geral › Rede › Configurações avançadas › **Ligar com dispositivo móvel** (nome varia). Sem isso, só o controle original liga |
+| TV foi desligada com o app aberto | Normal | O app mostra "TV desligada ou fora do ar" e tenta reconectar sozinho a cada 5 segundos. Quando a TV ligar (pelo controle ou pelo botão do app), ele volta sozinho. Ao ir pro segundo plano ele para de tentar |
+| Cursor na TV não aparece ou não clica | Nem todo modelo/tela aceita o modo ponteiro | Volte para as setas (botão no canto do touchpad ou em Config) |
 | Conexão cai depois de um tempo parado | O Android suspende o Wi-Fi com a tela apagada | Ao abrir o app ele reconecta (aviso "Reconectando…") |
+
+## Atualizar o app
+Config › Versão › Verificar. Quando houver versão nova aparece uma faixa laranja no topo: toque em Atualizar, espere baixar e confirme a instalação do Android. Precisa que o repositório do GitHub seja público.
 | Comandos atrasam ao segurar volume | A TV ignora muitos comandos por segundo | O app já limita a ~6 por segundo |
 
 ## Voz

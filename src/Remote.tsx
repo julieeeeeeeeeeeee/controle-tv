@@ -11,6 +11,7 @@ import { CAT } from './apps';
 import { DEMO, KEY, tv } from './tv';
 import { interpret, Action } from './voice';
 import { Settings, SavedTv } from './store';
+import { checkUpdate, currentVersion, downloadAndInstall, Release } from './update';
 
 const useTv = () => useSyncExternalStore((cb) => tv.subscribe(cb), () => tv.status + '|' + tv.detail);
 
@@ -30,11 +31,37 @@ export default function Remote({ s, setS, onChangeTv }: { s: Settings; setS: (f:
   const [cfg, setCfg] = useState(false);
   const [pick, setPick] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [upd, setUpd] = useState<Release | null>(null);
+  const [updMsg, setUpdMsg] = useState('');
+  const [prog, setProg] = useState(-1);
+  useEffect(() => { checkUpdate().then(setUpd).catch(() => {}); }, []);
+
+  const doCheck = () => {
+    setUpdMsg('Verificando…');
+    checkUpdate().then((r) => { setUpd(r); setUpdMsg(r ? 'Nova versão ' + r.version : 'Você está na versão mais recente'); }).catch(() => setUpdMsg('Não consegui verificar agora'));
+  };
+  const doInstall = () => {
+    if (!upd || prog >= 0) return;
+    setProg(0);
+    downloadAndInstall(upd, setProg).then(() => setProg(-1)).catch(() => { setProg(-1); setUpdMsg('O download falhou. Tente de novo.'); });
+  };
 
   useEffect(() => { setVibrate(s.vib); }, [s.vib]);
   useEffect(() => { if (DEMO) tv.sent = (w) => toast('Demo → ' + w); }, [toast]);
 
-  const key = (k: string) => { if (!tv.key(k)) toast(tv.status === 'on' ? 'Não enviou' : 'Reconectando à TV…'); };
+  const offMsg = 'TV desligada ou fora do ar. Estou tentando reconectar…';
+  const key = (k: string) => { if (!tv.key(k)) toast(tv.status === 'on' ? 'Não enviou' : offMsg); };
+
+  // cursor na TV: o dedo move um ponto na tela de 1920x1080
+  const pos = useRef<{ x: number; y: number; last: number; timer?: ReturnType<typeof setTimeout> }>({ x: 960, y: 540, last: 0 });
+  const moveCursor = (dx: number, dy: number) => {
+    const p = pos.current;
+    p.x = Math.max(0, Math.min(1919, p.x + dx * 5.5));
+    p.y = Math.max(0, Math.min(1079, p.y + dy * 5.5));
+    const send = () => { p.last = Date.now(); p.timer = undefined; tv.mouseMove(p.x, p.y); };
+    const wait = 35 - (Date.now() - p.last);
+    if (wait <= 0) send(); else if (!p.timer) p.timer = setTimeout(send, wait);
+  };
   const run = (a: Action) => {
     if (a.type === 'key') {
       const n = a.repeat ?? 1;
@@ -47,7 +74,7 @@ export default function Remote({ s, setS, onChangeTv }: { s: Settings; setS: (f:
 
   const status = tv.status;
   const dot = status === 'on' ? C.ok : status === 'error' ? C.accent : C.warn;
-  const statusTxt = status === 'on' ? 'Conectada' : status === 'error' ? 'Toque pra reconectar' : status === 'off' ? 'Desligada ou fora do ar' : 'Conectando…';
+  const statusTxt = status === 'on' ? 'Conectada' : status === 'error' ? 'Toque pra reconectar' : status === 'off' ? 'TV desligada ou fora do ar' : 'Conectando…';
   const tileW = Math.floor((width - 32 - 30) / 4);
   const stage = Math.min(width - 56, height * 0.33, 320);
   const tvSaved = s.tv as SavedTv;
@@ -70,6 +97,12 @@ export default function Remote({ s, setS, onChangeTv }: { s: Settings; setS: (f:
   return (
     <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: insets.top + 8, paddingBottom: insets.bottom + 10, paddingHorizontal: 16 }}>
       <ScrollView contentContainerStyle={{ gap: 16, flexGrow: 1 }} showsVerticalScrollIndicator={false} bounces={false}>
+        {upd && (
+          <Pressable onPress={doInstall} style={{ backgroundColor: C.accent, borderRadius: 14, paddingVertical: 10, paddingHorizontal: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text style={{ fontFamily: F.monoMed, fontSize: 12, color: '#fff' }}>Nova versão {upd.version}</Text>
+            <Text style={{ fontFamily: F.mono, fontSize: 11, color: '#fff', textTransform: 'uppercase', letterSpacing: 1 }}>{prog >= 0 ? `Baixando ${Math.round(prog * 100)}%` : 'Atualizar'}</Text>
+          </Pressable>
+        )}
         {/* topo */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           <Pressable style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 }} onPress={() => tv.reconnect()}>
@@ -85,7 +118,7 @@ export default function Remote({ s, setS, onChangeTv }: { s: Settings; setS: (f:
           </Btn>
         </View>
 
-        <View style={{ alignItems: 'center' }}><Touchpad size={stage} onKey={key} /></View>
+        <View style={{ alignItems: 'center' }}><Touchpad size={stage} mode={s.cursor ? 'cursor' : 'keys'} onKey={key} onMove={moveCursor} onClick={() => { if (!tv.mouseClick()) toast(offMsg); }} onToggle={() => setS((p) => ({ ...p, cursor: !p.cursor }))} /></View>
 
         {/* navegação | entrada */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -166,6 +199,9 @@ export default function Remote({ s, setS, onChangeTv }: { s: Settings; setS: (f:
         <Row label="Editar apps" onPress={() => { setEditing(true); setCfg(false); }} right={<Pencil size={18} color={C.mute} />} />
         <Row label="Vibrar ao tocar" right={<Switch value={s.vib} onValueChange={(v) => setS((p) => ({ ...p, vib: v }))} trackColor={{ true: C.accent, false: C.keyHi }} thumbColor="#fff" />} />
         <Row label="Trocar lado de volume e canal" right={<Switch value={s.flip} onValueChange={(v) => setS((p) => ({ ...p, flip: v }))} trackColor={{ true: C.accent, false: C.keyHi }} thumbColor="#fff" />} />
+        <Row label="Cursor na TV em vez de setas" right={<Switch value={s.cursor} onValueChange={(v) => setS((p) => ({ ...p, cursor: v }))} trackColor={{ true: C.accent, false: C.keyHi }} thumbColor="#fff" />} />
+        <Row label={`Versão ${currentVersion()}`} sub={prog >= 0 ? `Baixando ${Math.round(prog * 100)}%` : updMsg || (upd ? 'Nova versão ' + upd.version : '')} onPress={upd ? doInstall : doCheck}
+          right={<Label style={{ color: C.accent }}>{upd ? 'Atualizar' : 'Verificar'}</Label>} />
         <Row label={`TV · ${tvSaved?.name ?? ''}`} sub={`${tvSaved?.ip ?? ''}${tvSaved?.model ? ' · ' + tvSaved.model : ''}`} onPress={() => { setCfg(false); onChangeTv(); }} right={<Label style={{ color: C.accent }}>Trocar</Label>} />
       </Sheet>
     </View>

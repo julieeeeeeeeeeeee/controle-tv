@@ -136,6 +136,11 @@ class TvLinkModule : Module() {
       }
     }
 
+    // Pergunta à TV quem ela é e se está ligada (PowerState: "on" ou "standby").
+    AsyncFunction("info") { ip: String ->
+      if (!privateHost.containsMatchIn(ip)) null else probe(ip)
+    }
+
     // Wake-on-LAN: acorda a TV se ela aceitar ser ligada pela rede.
     AsyncFunction("wake") { mac: String ->
       val hex = mac.replace(Regex("[^0-9A-Fa-f]"), "")

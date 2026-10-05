@@ -18,7 +18,7 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "permissions": ["android.permission.ACCESS_NETWORK_STATE", "android.permission.ACCESS_LOCAL_NETWORK"]
+      "permissions": ["android.permission.ACCESS_NETWORK_STATE", "android.permission.ACCESS_LOCAL_NETWORK", "android.permission.REQUEST_INSTALL_PACKAGES"]
     },
     "web": {
       "favicon": "./assets/favicon.png"

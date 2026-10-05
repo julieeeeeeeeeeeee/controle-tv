@@ -30,14 +30,14 @@ export default function App() {
       ref.current = l;
       setSRaw(l);
       if (l.tv) {
-        tv.connect({ ip: l.tv.ip, token: l.tv.token, onToken: (token) => setS((p) => (p.tv ? { ...p, tv: { ...p.tv, token } } : p)) });
+        tv.connect({ ip: l.tv.ip, token: l.tv.token || undefined, known: true, onToken: (token) => setS((p) => (p.tv ? { ...p, tv: { ...p.tv, token } } : p)) });
       }
     });
   }, [setS]);
 
   // volta pro app: garante que ainda está conectado
   useEffect(() => {
-    const sub = AppState.addEventListener('change', (st) => { if (st === 'active') tv.reconnect(); });
+    const sub = AppState.addEventListener('change', (st) => { if (st === 'active') tv.reconnect(); else if (st === 'background') tv.pause(); });
     return () => sub.remove();
   }, []);
 

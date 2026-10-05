@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef } from 'react';
-import { Modal, PanResponder, Pressable, StyleProp, Text, View, ViewStyle, KeyboardAvoidingView, Platform } from 'react-native';
+import { Modal, PanResponder, Pressable, StyleProp, StyleSheet, Text, View, ViewStyle, KeyboardAvoidingView, Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { ArrowsLeftRight, CaretDown, CaretLeft, CaretRight, CaretUp, DotOutline, Target } from 'phosphor-react-native';
+import { ArrowsLeftRight, ArrowsOutCardinal, CaretDown, CaretLeft, CaretRight, CaretUp, Cursor, DotOutline, HandTap, Target } from 'phosphor-react-native';
 import { C, F } from './theme';
 import { KEY } from './keys';
 
@@ -9,24 +9,41 @@ let vibrate = true;
 export const setVibrate = (v: boolean) => { vibrate = v; };
 export const buzz = () => { if (vibrate) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {}); };
 
-// Botão com relevo: afunda 3px quando apertado.
+// Propriedades de tamanho/posição ficam na caixa de fora; o resto (cor, borda, alinhamento) vai no botão.
+const OUTER = ['width', 'height', 'flex', 'flexGrow', 'flexShrink', 'flexBasis', 'alignSelf', 'margin', 'marginTop', 'marginBottom',
+  'marginLeft', 'marginRight', 'marginHorizontal', 'marginVertical', 'minWidth', 'maxWidth'];
+
+// Botão com relevo: uma "base" escura fica parada atrás e o botão afunda 3px quando apertado.
 export function Btn({ children, onPress, style, bg = C.key, edge = C.edge, onPressIn, onPressOut, label }: {
   children: React.ReactNode; onPress?: () => void; style?: StyleProp<ViewStyle>; bg?: string; edge?: string;
   onPressIn?: () => void; onPressOut?: () => void; label?: string;
 }) {
+  const flat: any = StyleSheet.flatten(style) || {};
+  const outer: any = {};
+  const face: any = {};
+  for (const k of Object.keys(flat)) (OUTER.includes(k) ? outer : face)[k] = flat[k];
+  if (outer.height != null) face.height = '100%';
+  if (outer.width != null) face.width = '100%';
+  if (outer.flex != null) face.flex = 1;
+  const flatBtn = bg === 'transparent';
   return (
-    <Pressable
-      accessibilityLabel={label}
-      onPress={onPress}
-      onPressIn={() => { buzz(); onPressIn?.(); }}
-      onPressOut={onPressOut}
-      style={({ pressed }) => [
-        { backgroundColor: bg, alignItems: 'center', justifyContent: 'center', borderBottomWidth: pressed ? 0 : 3, borderBottomColor: edge, transform: [{ translateY: pressed ? 3 : 0 }] },
-        style,
-      ]}
-    >
-      {children}
-    </Pressable>
+    <View style={outer}>
+      {!flatBtn && (
+        <View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: 3, bottom: -3, borderRadius: face.borderRadius ?? 0, backgroundColor: edge }} />
+      )}
+      <Pressable
+        accessibilityLabel={label}
+        onPress={onPress}
+        onPressIn={() => { buzz(); onPressIn?.(); }}
+        onPressOut={onPressOut}
+        style={({ pressed }) => [
+          { backgroundColor: flatBtn && pressed ? C.key : bg, alignItems: 'center', justifyContent: 'center', transform: [{ translateY: pressed && !flatBtn ? 3 : 0 }] },
+          face,
+        ]}
+      >
+        {children}
+      </Pressable>
+    </View>
   );
 }
 
@@ -67,10 +84,15 @@ export function Sheet({ open, onClose, title, children, right }: { open: boolean
   );
 }
 
-// Área de deslizar: arrasta = setas, toque = OK, dois toques = voltar.
-export function Touchpad({ size, onKey }: { size: number; onKey: (k: string) => void }) {
-  const cb = useRef(onKey);
-  cb.current = onKey;
+// Área de deslizar.
+//  modo "setas": arrasta = setas, toque = OK, dois toques = voltar.
+//  modo "cursor": o dedo move um cursor na tela da TV, toque = clique.
+export function Touchpad({ size, mode, onKey, onMove, onClick, onToggle }: {
+  size: number; mode: 'keys' | 'cursor';
+  onKey: (k: string) => void; onMove: (dx: number, dy: number) => void; onClick: () => void; onToggle: () => void;
+}) {
+  const cb = useRef({ onKey, onMove, onClick, mode });
+  cb.current = { onKey, onMove, onClick, mode };
   const st = useRef({ x: 0, y: 0, moved: false, t: 0 });
   const tap = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -84,8 +106,13 @@ export function Touchpad({ size, onKey }: { size: number; onKey: (k: string) => 
         const s = st.current;
         const dx = g.dx - s.x;
         const dy = g.dy - s.y;
+        if (cb.current.mode === 'cursor') {
+          if (Math.abs(g.dx) + Math.abs(g.dy) > 4) s.moved = true;
+          if (s.moved) { cb.current.onMove(dx, dy); s.x = g.dx; s.y = g.dy; }
+          return;
+        }
         if (Math.abs(dx) >= STEP || Math.abs(dy) >= STEP) {
-          cb.current(dir(dx, dy));
+          cb.current.onKey(dir(dx, dy));
           buzz();
           s.x = g.dx; s.y = g.dy; s.moved = true;
         }
@@ -93,37 +120,49 @@ export function Touchpad({ size, onKey }: { size: number; onKey: (k: string) => 
       onPanResponderRelease: (_, g) => {
         const s = st.current;
         const dist = Math.hypot(g.dx, g.dy);
-        if (!s.moved && dist >= 16) { cb.current(dir(g.dx, g.dy)); buzz(); return; }
+        if (cb.current.mode === 'cursor') {
+          if (!s.moved && dist < 10 && Date.now() - s.t < 320) { buzz(); cb.current.onClick(); }
+          return;
+        }
+        if (!s.moved && dist >= 16) { cb.current.onKey(dir(g.dx, g.dy)); buzz(); return; }
         if (!s.moved && dist < 10 && Date.now() - s.t < 320) {
-          if (tap.current) { clearTimeout(tap.current); tap.current = null; cb.current(KEY.back); return; }
-          tap.current = setTimeout(() => { tap.current = null; cb.current(KEY.ok); }, 230);
+          if (tap.current) { clearTimeout(tap.current); tap.current = null; cb.current.onKey(KEY.back); return; }
+          tap.current = setTimeout(() => { tap.current = null; cb.current.onKey(KEY.ok); }, 230);
         }
       },
     });
   }, []);
 
   const edge = { position: 'absolute' as const };
+  const cursor = mode === 'cursor';
+  const legend: [React.ReactNode, string][] = cursor
+    ? [[<ArrowsLeftRight key="a" size={11} color={C.mute} />, 'arraste · move o cursor'], [<HandTap key="b" size={11} color={C.mute} />, 'toque · clique']]
+    : [[<ArrowsLeftRight key="a" size={11} color={C.mute} />, 'deslize · navega'], [<DotOutline key="b" size={11} color={C.mute} />, 'toque · OK'], [<Target key="c" size={11} color={C.mute} />, '2 toques · voltar']];
   return (
     <View {...pan.panHandlers} style={{ width: size, height: size, borderRadius: 32, backgroundColor: C.panel, borderWidth: 1, borderColor: '#17150f' }}>
-      <CaretUp size={26} color={C.keyHi} weight="bold" style={{ ...edge, top: 14, left: size / 2 - 13 }} />
-      <CaretDown size={26} color={C.keyHi} weight="bold" style={{ ...edge, bottom: 14, left: size / 2 - 13 }} />
-      <CaretLeft size={26} color={C.keyHi} weight="bold" style={{ ...edge, left: 14, top: size / 2 - 13 }} />
-      <CaretRight size={26} color={C.keyHi} weight="bold" style={{ ...edge, right: 14, top: size / 2 - 13 }} />
+      {!cursor && <>
+        <CaretUp size={26} color={C.keyHi} weight="bold" style={{ ...edge, top: 14, left: size / 2 - 13 }} />
+        <CaretDown size={26} color={C.keyHi} weight="bold" style={{ ...edge, bottom: 14, left: size / 2 - 13 }} />
+        <CaretLeft size={26} color={C.keyHi} weight="bold" style={{ ...edge, left: 14, top: size / 2 - 13 }} />
+        <CaretRight size={26} color={C.keyHi} weight="bold" style={{ ...edge, right: 14, top: size / 2 - 13 }} />
+      </>}
       <View style={{ ...edge, top: size / 2 - 42, left: size / 2 - 42, width: 84, height: 84, borderRadius: 42, borderWidth: 2, borderColor: C.keyHi, alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ fontFamily: F.display, fontSize: 24, color: C.keyHi, letterSpacing: 1.5 }}>OK</Text>
+        {cursor
+          ? <Cursor size={30} color={C.keyHi} weight="fill" />
+          : <Text style={{ fontFamily: F.display, fontSize: 24, color: C.keyHi, letterSpacing: 1.5 }}>OK</Text>}
       </View>
       <View pointerEvents="none" style={{ ...edge, left: 16, bottom: 14, gap: 4 }}>
-        {[
-          [<ArrowsLeftRight key="a" size={11} color={C.mute} />, 'deslize · navega'],
-          [<DotOutline key="b" size={11} color={C.mute} />, 'toque · OK'],
-          [<Target key="c" size={11} color={C.mute} />, '2 toques · voltar'],
-        ].map(([icon, txt], i) => (
+        {legend.map(([icon, txt], i) => (
           <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, opacity: 0.85 }}>
-            {icon as any}
-            <Text style={{ fontFamily: F.mono, fontSize: 8.5, letterSpacing: 0.8, color: C.mute, textTransform: 'uppercase' }}>{txt as string}</Text>
+            {icon}
+            <Text style={{ fontFamily: F.mono, fontSize: 8.5, letterSpacing: 0.8, color: C.mute, textTransform: 'uppercase' }}>{txt}</Text>
           </View>
         ))}
       </View>
+      <Pressable onPress={() => { buzz(); onToggle(); }} hitSlop={10} accessibilityLabel={cursor ? 'Trocar para setas' : 'Trocar para cursor'}
+        style={{ ...edge, top: 10, right: 10, width: 38, height: 38, borderRadius: 12, backgroundColor: C.key, alignItems: 'center', justifyContent: 'center' }}>
+        {cursor ? <ArrowsOutCardinal size={18} color={C.ink} /> : <Cursor size={18} color={C.ink} />}
+      </Pressable>
     </View>
   );
 }
