@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, ScrollView, Switch, Text, TextInput, View
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import {
-  ArrowUUpLeft, GearSix, Headphones, House, Keyboard, MagnifyingGlass, Microphone, Minus, Pencil, Plus, Power, SpeakerSlash, X,
+  ArrowUUpLeft, GearSix, Lightbulb, Headphones, House, Keyboard, MagnifyingGlass, Microphone, Minus, Pencil, Plus, Power, SpeakerSlash, X,
 } from 'phosphor-react-native';
 import { C, F } from './theme';
 import { Btn, Label, Sheet, Touchpad, buzz, setVibrate, useHold } from './ui';
@@ -12,6 +12,7 @@ import { DEMO, KEY, tv } from './tv';
 import { interpret, Action } from './voice';
 import { Settings, SavedTv } from './store';
 import YtSheet from './YtSheet';
+import LumeSheet from './LumeSheet';
 import { LAYOUTS, plan } from './ytkeys';
 import { checkUpdate, currentVersion, downloadAndInstall, Release } from './update';
 
@@ -30,6 +31,7 @@ export default function Remote({ s, setS, onChangeTv }: { s: Settings; setS: (f:
   }, []);
   const [kb, setKb] = useState(false);
   const [voice, setVoice] = useState(false);
+  const [lume, setLume] = useState(false);
   const [cfg, setCfg] = useState(false);
   const [pick, setPick] = useState(false);
   const [ytOpen, setYtOpen] = useState(false);
@@ -133,6 +135,7 @@ export default function Remote({ s, setS, onChangeTv }: { s: Settings; setS: (f:
           </View>
           <View style={pill}>
             <Btn label="Teclado" onPress={() => setKb(true)} style={round}><Keyboard size={26} color={C.ink} /></Btn>
+            <Btn label="Lume" onPress={() => setLume(true)} style={round}><Lightbulb size={26} color={C.ink} /></Btn>
             <Btn label="Falar" bg={C.accent} edge={C.accentEdge} onPress={() => setVoice(true)} style={{ width: 72, height: 72, borderRadius: 36 }}>
               <Microphone size={32} color="#fff" weight="fill" />
             </Btn>
@@ -192,6 +195,7 @@ export default function Remote({ s, setS, onChangeTv }: { s: Settings; setS: (f:
 
       <KeyboardSheet open={kb} onClose={() => setKb(false)} toast={toast} />
       <YtSheet open={ytOpen} onClose={() => setYtOpen(false)} s={s} setS={setS} toast={toast} />
+      <LumeSheet open={lume} onClose={() => setLume(false)} />
       <VoiceSheet open={voice} onClose={() => setVoice(false)} run={run} />
 
       <Sheet open={pick} onClose={() => setPick(false)} title="Adicionar app">
